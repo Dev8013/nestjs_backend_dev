@@ -1,50 +1,66 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { LoggerService } from './user.logger.js';
+import { CreateUserDto } from './dto/create-user.dto.js';
+import { UpdateUserDto } from './dto/update-user.dto.js';
 
-interface User {
+export interface User {
     id: number;
     userID: string;
     name: string;
+    email: string;
 }
-//implement all crudfunctionalities in this service class
-//find all user, done
-//find one user, done
-//create user, --
-//delete user, --
-
 @Injectable()
 export class UserService {
-    //defined static data for now, later we can replace it with database
-    constructor(private readonly Logger: LoggerService) {}
+    constructor(private readonly logger: LoggerService) {}
+
     private users: User[] = [
-        {id: 1, userID: "23BDO10001", name: "Gurshan"},
-        {id: 2, userID: "23BDO10025", name: "Dev"},
-        {id: 3, userID: "23BDO10003", name: "Saxsam"}
+        {id: 1, userID: "23BDO10001", name: "Gurshan", email: "gurshan@example.com"},
+        {id: 2, userID: "23BDO10025", name: "Dev", email: "dev@example.com"},
+        {id: 3, userID: "23BDO10003", name: "Saxsam", email: "saxsam@example.com"}
     ];
 
     findAllUsers(name: string = '') {
-        this.Logger.log('Fetching all users');
-        return this.users.filter((user) => 
-        user.name.toLocaleLowerCase().includes(name.toLowerCase()));
+        this.logger.log('Fetching all users');
+        return this.users.filter((user) =>
+            user.name.toLowerCase().includes(name.toLowerCase()));
     }
+
     findOneUser(id: number) {
-        this.Logger.log(`Fetching user with id: ${id}`);
-        return this.users.find((user) => user.id === id);
+        this.logger.log(`Fetching user with id: ${id}`);
+        const user = this.users.find((candidate) => candidate.id === id);
+        if (!user) {
+            throw new NotFoundException(`User with id ${id} not found`);
+        }
+        return user;
     }
-    createUser(name: string, userID: string, id: number) {
-        this.Logger.log(`Creating user with id: ${name}`);
+
+    createUser(dto: CreateUserDto) {
+        this.logger.log('Creating user');
         const newUser: User = {
-            name: name,
-            userID: userID,
-            id: id
-        }
-        return this.users.push(newUser);
+            id: Math.max(0, ...this.users.map((user) => user.id)) + 1,
+            ...dto
+        };
+        this.users.push(newUser);
+        return newUser;
     }
-    deleteUser(userID : number) {
-        this.Logger.log(`Deleting user with id: ${userID}`);
-        const user = this.findOneUser(userID);
-        if (user) {
-            this.users = this.users.filter((u) => u.id !== userID);
+
+    updateUser(id: number, dto: UpdateUserDto) {
+        this.logger.log(`Updating user with id: ${id}`);
+        const index = this.users.findIndex((user) => user.id === id);
+        if (index === -1) {
+            throw new NotFoundException(`User with id ${id} not found`);
         }
+        this.users[index] = {...this.users[index], ...dto};
+        return this.users[index];
+    }
+
+    deleteUser(id: number) {
+        this.logger.log(`Deleting user with id: ${id}`);
+        const index = this.users.findIndex((user) => user.id === id);
+        if (index === -1) {
+            throw new NotFoundException(`User with id ${id} not found`);
+        }
+        const [deletedUser] = this.users.splice(index, 1);
+        return deletedUser;
     }
 }
