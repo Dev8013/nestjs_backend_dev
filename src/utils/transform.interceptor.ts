@@ -1,9 +1,20 @@
 import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
+import {response} from 'express';
 
 @Injectable()
-export class TransformInterceptor implements NestInterceptor {
+export class TransformInterceptor<T> implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
-    return next.handle();
+    
+    const respone = context.switchToHttp().getResponse<Response>();
+    const statusCode = response.statusCode ?? 200;
+
+    return next.handle().pipe(
+      map((data: T) => ({
+        statusCode,
+        message: 'success',
+        data
+      }))
+    );
   }
 }
